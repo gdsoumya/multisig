@@ -20,6 +20,8 @@ const Submit = () => {
         sigs.push({ signature: event.target[`signature${i}`].value, address: event.target[`address${i}`].value })
 
       }
+      sigs.sort((a, b) => a.address.localeCompare(b.address))
+
       const client = await connectTezAccount()
       const opID = await getNextOperationIndex()
       await submitMultisigOperation(client, sigs, event.target.operation.value)
