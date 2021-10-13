@@ -1,10 +1,10 @@
 {
-    "rpc": "https://granadanet.smartpy.io/",
+    "rpc": "https://mainnet.smartpy.io/",
     "conseilServer": {
-        "url": "https://conseil-granada.cryptonomic-infra.tech",
-        "apiKey": "4bb2f288-c36a-49ea-a50e-e7cbdc495e0e",
-        "network": "granadanet"
+        "url": "https://conseil-prod.cryptonomic-infra.tech:443",
+        "apiKey": "4660121e-1bab-4740-8d57-083681e3441d",
+        "network": "mainnet"
     },
-    "multisigAddr": "KT1E11DCqRbkcfCqjDcLYxYkzSSKEAqKZo8H",
-    "tokenAddr": "KT1NuqLruhfUmdNcCjQDzYqLMkKZsCvCjSrd"
+    "multisigAddr": "KT1DTxmuuEARtynHP2r6EX14PieaPmTu1vxF",
+    "tokenAddr": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9"
 }
