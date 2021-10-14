@@ -1,5 +1,5 @@
 {
-    "rpc": "https://mainnet.smartpy.io/",
+    "rpc": "https://tezos-prod.cryptonomic-infra.tech/",
     "conseilServer": {
         "url": "https://conseil-prod.cryptonomic-infra.tech:443",
         "apiKey": "4660121e-1bab-4740-8d57-083681e3441d",

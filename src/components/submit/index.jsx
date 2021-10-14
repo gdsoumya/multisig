@@ -1,5 +1,6 @@
 import { connectTezAccount, getNextOperationIndex, submitMultisigOperation } from "../../library/tezos";
 
+import { TezosMessageUtils } from "conseiljs";
 import { useState } from "react";
 import useStyles from "./style";
 
@@ -20,7 +21,17 @@ const Submit = () => {
         sigs.push({ signature: event.target[`signature${i}`].value, address: event.target[`address${i}`].value })
 
       }
-      sigs.sort((a, b) => a.address.localeCompare(b.address))
+
+      sigs.sort((a, b) => {
+        console.log(TezosMessageUtils.writeAddress(a.address))
+        // eslint-disable-next-line no-undef
+        const a1 = BigInt("0x" + TezosMessageUtils.writeAddress(a.address))
+        // eslint-disable-next-line no-undef
+        const b1 = BigInt("0x" + TezosMessageUtils.writeAddress(b.address))
+        if (a1 > b1) return 1
+        if (a1 < b1) return -1
+        return 0
+      })
 
       const client = await connectTezAccount()
       const opID = await getNextOperationIndex()
