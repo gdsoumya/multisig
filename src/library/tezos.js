@@ -1,38 +1,24 @@
 import { DAppClient, TezosOperationType } from "@airgap/beacon-sdk";
-import {
-  TezosConseilClient,
-  TezosMessageUtils,
-  TezosNodeReader,
-} from "conseiljs";
-
+import { TezosMessageUtils, TezosNodeReader } from "conseiljs";
 import { JSONPath } from "jsonpath-plus";
 
-const config = require(`./config.${
-  process.env.REACT_APP_ENV || "mainnet"
-}.json`);
+const config = require(`./config.${process.env.REACT_APP_ENV || "mainnet"}.json`);
 
 export const connectTezAccount = async () => {
   const client = new DAppClient({ name: "Multisig" });
-  const network =
-    config.conseilServer.network === "mainnet" ? "mainnet" : "granadanet";
-  await client.requestPermissions({
-    network: { type: network },
-  });
+  const network = config.network === "mainnet" ? "mainnet" : "ghostnet";
+  await client.requestPermissions({ network: { type: network } });
   const account = await client.getActiveAccount();
+
+  console.log(`connected to ${network} at ${config.rpc} as ${account["address"]}`)
+
   return { client, account: account["address"] };
 };
 
 export const getNextOperationIndex = async () => {
-  const multisigStorage = await TezosNodeReader.getContractStorage(
-    config.rpc,
-    config.multisigAddr
-  );
+  const multisigStorage = await TezosNodeReader.getContractStorage(config.rpc, config.multisigAddr);
 
-  return (
-    Number(
-      JSONPath({ path: "$.args[0].args[0].int", json: multisigStorage })[0]
-    ) + 1
-  );
+  return (Number(JSONPath({ path: "$.args[0].args[0].int", json: multisigStorage })[0]) + 1);
 };
 
 export const composeTransferRequest = (
@@ -237,22 +223,43 @@ export const setAdminRequest = (
   };
 };
 
+export const composeKeyRotateRequest = (
+    chainId,
+    operationIndex,
+    threshold,
+    keys
+  ) => {
+    const encodedChainId = TezosMessageUtils.writeBufferWithHint(chainId, "chain_id").toString("hex");
+
+    return `{ "prim": "Pair", "args": [ { "bytes": "${encodedChainId}" }, { "prim": "Pair", "args": [ { "int": "${operationIndex}" }, { "prim": "Pair", "args": [ { "int": "${threshold}" }, [ ${keys.map(k => `{ "bytes": "${TezosMessageUtils.writePublicKey(k)}" }`).join(', ')} ] ] } ] } ] }`;
+  };
+  
+  export const packKeyRotateRequest = (chainId, operationIndex, threshold, keys) => {
+    const operation = composeKeyRotateRequest(chainId, operationIndex, threshold, keys);
+  
+    return TezosMessageUtils.writePackedData(operation, "");
+  };
+  
+  export const keyRotateRequest = (chainId, operationIndex, threshold, keys) => {
+    return {
+      operation: composeKeyRotateRequest(chainId, operationIndex, threshold, keys),
+      bytes: packKeyRotateRequest(chainId, operationIndex, threshold, keys),
+    };
+  };
+
 export const submitMultisigOperation = async (
   { client, account },
   signatures,
-  operation
+  operation,
+  entrypoint = 'submit'
 ) => {
-  let params = `{ "prim": "Pair", "args": [ [ ${signatures
-    .map(
-      (s) =>
-        `{ "prim": "Elt", "args": [{ "string": "${s.address}" }, { "string": "${s.signature}" }] }`
-    )
-    .join(", ")} ], ${operation} ] }`;
+  const params = `{ "prim": "Pair", "args": [ [ ${signatures.map((s) =>`{ "prim": "Elt", "args": [{ "string": "${s.address}" }, { "string": "${s.signature}" }] }`).join(", ")} ], ${operation} ] }`;
+
   const res = await interact({ client, account }, [
     {
       to: config.multisigAddr,
       amtInMuTez: 0,
-      entrypoint: "submit",
+      entrypoint,
       parameters: params,
     },
   ]);
@@ -301,20 +308,19 @@ export const interact = async (
         },
       });
     });
-    const result = await client.requestOperation({
-      operationDetails: ops,
-    });
-    console.log(result);
-    const groupid = result["transactionHash"]
-      .replace(/"/g, "")
-      .replace(/\n/, ""); // clean up RPC output
-    const confirm = await TezosConseilClient.awaitOperationConfirmation(
-      config.conseilServer,
-      config.conseilServer.network,
-      groupid,
-      2
-    );
-    return confirm;
+
+    let head = 0;
+    try { head = (await TezosNodeReader.getBlockHead(config.rpc)).header.level; } catch { }
+
+    const result = await client.requestOperation({ operationDetails: ops, });
+
+    if (head > 0) {
+        try {
+            await TezosNodeReader.awaitOperationConfirmation(config.rpc, head, result["transactionHash"], 7);
+        } catch { }
+    }
+
+    return result["transactionHash"];
   } catch (err) {
     console.error(err);
     throw err;
