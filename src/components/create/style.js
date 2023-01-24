@@ -47,7 +47,9 @@ const useStyles = makeStyles((theme) => ({
     margin: "1vw auto",
   },
   label: {
+    display: "inline-block",
     padding: "0.7vw",
+    verticalAlign: "top"
   },
   input: {
     margin: "0.7vw",

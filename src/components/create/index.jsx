@@ -1,5 +1,5 @@
 import { MenuItem, Select } from "@material-ui/core";
-import { burnRequest, connectTezAccount, getChainID, getNextOperationIndex, mintRequest, setAdminRequest } from "../../library/tezos";
+import { burnRequest, connectTezAccount, getChainID, getNextOperationIndex, mintRequest, keyRotateRequest, setAdminRequest } from "../../library/tezos";
 
 import { SigningType } from "@airgap/beacon-sdk";
 import { useState } from "react";
@@ -33,7 +33,6 @@ const Create = () => {
     }
   };
 
-
   const mintBurn = (handler) => {
     return (
       <form onSubmit={handler}>
@@ -45,7 +44,7 @@ const Create = () => {
           Amount:
         </label>
         <input className={classes.input} type="number" name="amount" placeholder="Amount" required />
-        <input className={classes.input} type="submit" value="Submit" />
+        <input className={classes.input} type="submit" value="Sign" />
       </form>
     )
   }
@@ -68,6 +67,35 @@ const Create = () => {
     }
   };
 
+  const rotateKeysForm = (handler) => {
+    return (
+      <form onSubmit={handler}>
+        <label htmlFor="threshold" className={classes.label}>Threshold</label>
+        <input className={classes.input} type="number" name="threshold" placeholder="2" required />
+        <label htmlFor="keys" className={classes.label}>Keys</label>
+        <input className={classes.input} type="text" name="keys" placeholder="edpk..., edpk..., edpk..." required />
+        <input className={classes.input} type="submit" value="Sign" />
+      </form>
+    )
+  }
+
+  const handleRotateKeys = async (event) => {
+    event.preventDefault();
+    try {
+      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(), connectTezAccount()])
+      console.log(chainID, opID, account)
+      const data = keyRotateRequest(chainID, opID, event.target.threshold.value, event.target.keys.value.split(',').map(k => k.trim()))
+      const sig = await client.requestSignPayload({
+        signingType: SigningType.MICHELINE,
+        payload: data.bytes,
+      });
+      setSig(sig.signature)
+      setOpData(data.operation)
+    } catch (err) {
+      console.log("Failed to create operation", err)
+      alert("Failed to create operation")
+    }
+  };
 
   const handleSetAdmin = async (event) => {
     event.preventDefault();
@@ -87,7 +115,6 @@ const Create = () => {
     }
   };
 
-
   const setAdmin = () => {
     return (
       <form onSubmit={handleSetAdmin}>
@@ -95,7 +122,7 @@ const Create = () => {
           Admin:
         </label>
         <input className={classes.input} type="text" name="admin" placeholder="New Admin Address" required />
-        <input className={classes.input} type="submit" value="Submit" />
+        <input className={classes.input} type="submit" value="Sign" />
       </form>
     )
   }
@@ -105,9 +132,11 @@ const Create = () => {
       case "mint": return mintBurn(handleMint);
       case "burn": return mintBurn(handleBurn);
       case "setadmin": return setAdmin();
+      case "rotatekeys": return rotateKeysForm(handleRotateKeys);
       default: return mintBurn(handleMint);
     }
-  }
+  };
+
   return (
     <div className={classes.container}>
       <Select
@@ -121,13 +150,15 @@ const Create = () => {
         <MenuItem value={"mint"}>Mint</MenuItem>
         <MenuItem value={"burn"}>Burn</MenuItem>
         <MenuItem value={"setadmin"}>Set Admin</MenuItem>
+        <MenuItem value={"rotatekeys"}>Rotate Keys</MenuItem>
       </Select>
       {renderForm()}
       <div className={classes.display}>
-        <label>Operation: </label>
-        <input className={classes.input} type="text" value={opData} readOnly /><br />
-        <label>Your Signature: </label>
-        <input className={classes.input} type="text" value={sig} readOnly />
+        <label htmlFor="operation" className={classes.label}>Operation</label>
+        <textarea name="operation" className={classes.input} readOnly style={{width: "600px"}} value={opData}>
+        </textarea><br />
+        <label htmlFor="signature" className={classes.label}>Signature</label>
+        <input name="signature" className={classes.input} type="text" value={sig} readOnly style={{width: "600px"}}/>
       </div>
     </div>
   );

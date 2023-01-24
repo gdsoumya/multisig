@@ -19,10 +19,8 @@ const Execute = () => {
   return (
     <div className={classes.container}>
       <form onSubmit={handleSubmit}>
-        <label className={classes.label}>
-          Operation Index:
-        </label>
-        <input className={classes.input} type="number" name="id" placeholder="Your Operation Index" required />
+        <label htmlFor="id" className={classes.label}>Operation Index</label>
+        <input className={classes.input} type="number" name="id" placeholder="Operation Index" required />
         <input className={classes.input} type="submit" value="Execute" />
       </form>
     </div>
