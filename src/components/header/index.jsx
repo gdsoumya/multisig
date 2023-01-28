@@ -16,6 +16,9 @@ const Header = () => {
           <a href="/execute" className={classes.menuItem}>
             Execute
           </a>
+          <a href="/rotate" className={classes.menuItem}>
+            Rotate
+          </a>
         </div>
       </div>
     </div>

@@ -44,7 +44,7 @@ const useStyles = makeStyles((theme) => ({
   },
   select: {
     width: "fit-content",
-    margin: "1vw auto",
+    margin: "0.7vw",
   },
   label: {
     display: "inline-block",

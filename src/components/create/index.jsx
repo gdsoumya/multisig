@@ -1,15 +1,18 @@
 import { MenuItem, Select } from "@material-ui/core";
-import { burnRequest, connectTezAccount, getChainID, getNextOperationIndex, mintRequest, keyRotateRequest, setAdminRequest } from "../../library/tezos";
+import { burnIndexedRequest, burnRequest, connectTezAccount, getChainID, getNextOperationIndex, mintIndexedRequest, mintRequest, keyRotateRequest, setAdminRequest } from "../../library/tezos";
 
 import { SigningType } from "@airgap/beacon-sdk";
 import { useState } from "react";
 import useStyles from "./style";
+
+const config = require(`../../library/config.${process.env.REACT_APP_ENV || "mainnet"}.json`);
 
 const Create = () => {
   const classes = useStyles();
   const [operation, setOperation] = useState('mint');
   const [opData, setOpData] = useState('operation data');
   const [sig, setSig] = useState('your signature');
+  const [tokenAddress, setTokenAddress] = useState(config.tokens[0].tokenAddr);
   const handleChange = (event) => {
     setOperation(event.target.value);
   };
@@ -17,14 +20,16 @@ const Create = () => {
   const handleMint = async (event) => {
     event.preventDefault();
     try {
-      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(), connectTezAccount()])
-      console.log(chainID, opID, account)
-      const data = mintRequest(chainID, opID, event.target.address.value, event.target.amount.value)
-      console.log(data)
-      const sig = await client.requestSignPayload({
-        signingType: SigningType.MICHELINE,
-        payload: data.bytes,
-      });
+      const tokenRecord = config.tokens.filter(t => t.tokenAddr === tokenAddress)[0];
+      const multisigAddr = tokenRecord.multisigAddr;
+      const tokenType = tokenRecord.tokenType ?? 'FA1.2';
+
+      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(multisigAddr), connectTezAccount()]);
+      const data =
+        tokenType === 'FA1.2' ?
+        mintRequest(chainID, opID, tokenAddress, event.target.address.value, event.target.amount.value)
+        : mintIndexedRequest(chainID, opID, tokenAddress, tokenRecord.tokenIndex, event.target.address.value, event.target.amount.value);
+      const sig = await client.requestSignPayload({ signingType: SigningType.MICHELINE, payload: data.bytes });
       setSig(sig.signature)
       setOpData(data.operation)
     } catch (err) {
@@ -52,13 +57,16 @@ const Create = () => {
   const handleBurn = async (event) => {
     event.preventDefault();
     try {
-      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(), connectTezAccount()])
-      console.log(chainID, opID, account)
-      const data = burnRequest(chainID, opID, event.target.address.value, event.target.amount.value)
-      const sig = await client.requestSignPayload({
-        signingType: SigningType.MICHELINE,
-        payload: data.bytes,
-      });
+      const tokenRecord = config.tokens.filter(t => t.tokenAddr === tokenAddress)[0];
+      const multisigAddr = tokenRecord.multisigAddr;
+      const tokenType = tokenRecord.tokenType ?? 'FA1.2';
+
+      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(multisigAddr), connectTezAccount()])
+      const data =
+        tokenType === 'FA1.2' ?
+          burnRequest(chainID, opID, tokenAddress, event.target.address.value, event.target.amount.value)
+          : burnIndexedRequest(chainID, opID, tokenAddress, tokenRecord.tokenIndex, event.target.address.value, event.target.amount.value);
+      const sig = await client.requestSignPayload({ signingType: SigningType.MICHELINE, payload: data.bytes });
       setSig(sig.signature)
       setOpData(data.operation)
     } catch (err) {
@@ -82,13 +90,10 @@ const Create = () => {
   const handleRotateKeys = async (event) => {
     event.preventDefault();
     try {
-      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(), connectTezAccount()])
-      console.log(chainID, opID, account)
+      const multisigAddr = config.tokens.filter(t => t.tokenAddr === tokenAddress)[0].multisigAddr;
+      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(multisigAddr), connectTezAccount()])
       const data = keyRotateRequest(chainID, opID, event.target.threshold.value, event.target.keys.value.split(',').map(k => k.trim()))
-      const sig = await client.requestSignPayload({
-        signingType: SigningType.MICHELINE,
-        payload: data.bytes,
-      });
+      const sig = await client.requestSignPayload({ signingType: SigningType.MICHELINE, payload: data.bytes });
       setSig(sig.signature)
       setOpData(data.operation)
     } catch (err) {
@@ -100,13 +105,10 @@ const Create = () => {
   const handleSetAdmin = async (event) => {
     event.preventDefault();
     try {
-      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(), connectTezAccount()])
-      console.log(chainID, opID, account)
+      const multisigAddr = config.tokens.filter(t => t.tokenAddr === tokenAddress)[0].multisigAddr;
+      const [chainID, opID, { client, account }] = await Promise.all([getChainID(), getNextOperationIndex(multisigAddr), connectTezAccount()])
       const data = setAdminRequest(chainID, opID, event.target.admin.value)
-      const sig = await client.requestSignPayload({
-        signingType: SigningType.MICHELINE,
-        payload: data.bytes,
-      });
+      const sig = await client.requestSignPayload({ signingType: SigningType.MICHELINE, payload: data.bytes });
       setSig(sig.signature)
       setOpData(data.operation)
     } catch (err) {
@@ -139,6 +141,19 @@ const Create = () => {
 
   return (
     <div className={classes.container}>
+      <label htmlFor="token" className={classes.label}>Token</label>
+      <Select
+            className={classes.select}
+            labelId="token"
+            id="token"
+            value={tokenAddress}
+            label="token"
+            onChange={(event) => { setTokenAddress(event.target.value) }}
+        >
+        {config.tokens.map(token => <MenuItem key={`menuItem${token.tokenName}`} value={token.tokenAddr}>{token.tokenName}</MenuItem>)}
+      </Select>
+
+      <label htmlFor="operations" className={classes.label}>Action</label>
       <Select
         className={classes.select}
         labelId="operations"
@@ -152,11 +167,13 @@ const Create = () => {
         <MenuItem value={"setadmin"}>Set Admin</MenuItem>
         <MenuItem value={"rotatekeys"}>Rotate Keys</MenuItem>
       </Select>
+
       {renderForm()}
+
       <div className={classes.display}>
         <label htmlFor="operation" className={classes.label}>Operation</label>
-        <textarea name="operation" className={classes.input} readOnly style={{width: "600px"}} value={opData}>
-        </textarea><br />
+        <textarea name="operation" className={classes.input} readOnly style={{width: "600px"}} value={opData}></textarea>
+        <br />
         <label htmlFor="signature" className={classes.label}>Signature</label>
         <input name="signature" className={classes.input} type="text" value={sig} readOnly style={{width: "600px"}}/>
       </div>
