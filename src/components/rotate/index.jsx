@@ -1,29 +1,16 @@
 import { MenuItem, Select } from "@material-ui/core";
 import { TezosMessageUtils } from "conseiljs";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { connectTezAccount, getNextOperationIndex, submitMultisigOperation } from "../../library/tezos";
+import { connectTezAccount, submitMultisigOperation } from "../../library/tezos";
 import useStyles from "./style";
 
 const config = require(`../../library/config.${process.env.REACT_APP_ENV || "mainnet"}.json`);
 
-const Submit = () => {
+const Rotate = () => {
   const classes = useStyles();
   const [count, setCount] = useState(1);
-  const [opID, setOpID] = useState(0);
   const [multisigAddress, setMultisigAddress] = useState(config.tokens[0].multisigAddr);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      let idx = 0;
-      try {
-        idx = await getNextOperationIndex(multisigAddress);
-      } catch { }
-      setOpID(idx);
-    }
-
-      fetchData().catch(console.error);
-  }, [multisigAddress]);
 
   const handleSigs = (event) => {
     event.preventDefault();
@@ -52,12 +39,7 @@ const Submit = () => {
       })
 
       const client = await connectTezAccount();
-      const opID = await getNextOperationIndex(multisigAddress);
-
-      await submitMultisigOperation(client, multisigAddress, sigs, event.target.operation.value, 'submit');
-
-      alert("operation submitted")
-      setOpID(opID);
+      await submitMultisigOperation(client, multisigAddress, sigs, event.target.operation.value, 'rotate');
     } catch (err) {
       console.log("Failed to submit operation", err)
       alert("Failed to submit operation")
@@ -94,7 +76,7 @@ const Submit = () => {
         <br /><br />
         {sigs}
 
-        <input className={classes.input} type="submit" value="Submit" />
+        <input className={classes.input} type="submit" value="Rotate" />
       </form>
     )
   }
@@ -106,9 +88,8 @@ const Submit = () => {
         <input className={classes.input} type="submit" value="Set" />
       </form><br />
       {renderForm()}
-      <div className={classes.opID}>Operation Index: {opID}</div>
     </div>
   );
 };
 
-export default Submit;
+export default Rotate;

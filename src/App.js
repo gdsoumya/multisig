@@ -6,6 +6,7 @@ import Create from "./components/create";
 import Execute from "./components/execute";
 import Header from "./components/header";
 import Submit from "./components/submit";
+import Rotate from "./components/rotate";
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
           </Route>
           <Route exact path="/execute">
             <Execute />
+          </Route>
+          <Route exact path="/rotate">
+            <Rotate />
           </Route>
         </Switch>
       </div>
