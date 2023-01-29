@@ -2,8 +2,7 @@ import { DAppClient, TezosOperationType } from "@airgap/beacon-sdk";
 import { TezosMessageUtils, TezosNodeReader, TezosNodeWriter } from "conseiljs";
 import { JSONPath } from "jsonpath-plus";
 
-// const config = require(`./config.${process.env.REACT_APP_ENV || "mainnet"}.json`);
-const config = require(`./config.testnet.json`);
+const config = require(`./config.${process.env.REACT_APP_ENV || "mainnet"}.json`);
 
 export const connectTezAccount = async () => {
     const client = new DAppClient({ name: "Multisig" });
